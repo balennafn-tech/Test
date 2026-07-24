@@ -256,6 +256,8 @@ def render_card(ticker: str, price: float, low: float, high: float,
                  off_high: float, rsi: float, ma50: float, score: float) -> None:
     t = tier_info(score)
     ring = score_ring_svg(score, t["color"])
+    zone_low = low
+    zone_high = low + 0.15 * (high - low) if high > low else low
     st.markdown(
         _html(f"""
         <div class="card" style="border-left-color:{t['color']}">
@@ -278,6 +280,11 @@ def render_card(ticker: str, price: float, low: float, high: float,
                 <div class="stat"><div class="v">{off_high:.1f}%</div><div class="l">Off-High</div></div>
                 <div class="stat"><div class="v">{rsi:.1f}</div><div class="l">RSI</div></div>
                 <div class="stat"><div class="v">{ma50:.1f}%</div><div class="l">MA50</div></div>
+            </div>
+            <div class="stat-row">
+                <div class="stat"><div class="v">{low:.2f}</div><div class="l">ต่ำสุด 52wk</div></div>
+                <div class="stat"><div class="v">{high:.2f}</div><div class="l">สูงสุด 52wk</div></div>
+                <div class="stat"><div class="v">{zone_low:.2f}–{zone_high:.2f}</div><div class="l">โซนล่าง 15%</div></div>
             </div>
         </div>
         """),
@@ -448,6 +455,8 @@ st.markdown(
     <b>Webull ไม่มี public API อย่างเป็นทางการ</b> สำหรับนักพัฒนาภายนอก แอปนี้จึงใช้ Yahoo Finance แทน
     คุณยังส่งคำสั่งซื้อขายจริงผ่าน Webull ได้ตามปกติ<br/><br/>
     คะแนน "ฟอร์ม" เป็นแค่ตัวช่วยกรองตามเทคนิคที่คุณเลือกเอง <b>ไม่ใช่คำแนะนำการลงทุน</b> —
+    "โซนล่าง 15%" คือช่วงราคาต่ำสุด 15% ของกรอบราคา 52 สัปดาห์ (คำนวณจากสถิติราคาย้อนหลังเท่านั้น
+    ไม่ใช่การฟันธงว่าควรซื้อที่ราคานี้ ราคาหุ้นอาจไม่กลับมาที่โซนนี้เลยก็ได้)<br/><br/>
     รายชื่อหุ้น SET เริ่มต้นเป็นชุดหุ้นใหญ่คุ้นเคย ไม่ใช่ SET50 ที่อัปเดตล่าสุดเป๊ะ แก้ไขได้ในตั้งค่าขั้นสูง
     </div>
     """),
