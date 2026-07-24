@@ -168,12 +168,79 @@ def score_badge(score: float) -> str:
     return f'<span class="badge badge-low">⚪ {score:.0f} ยังไม่เข้าเกณฑ์</span>'
 
 
+DEFAULT_WEIGHTS = {"off_high": 1.0, "rsi": 1.0, "ma50": 1.0, "ma200": 0.5}
+
+
+def verdict_text(score: float) -> tuple[str, str]:
+    if pd.isna(score):
+        return "ไม่มีข้อมูลเพียงพอสำหรับประเมิน", "⚪"
+    if score >= 70:
+        return "น่าช้อน — เข้าเกณฑ์หลายอย่างพร้อมกัน ราคาปรับตัวลงมาน่าสนใจ", "🟢"
+    if score >= 40:
+        return "อยู่ในการจับตา — เริ่มมีสัญญาณน่าสนใจ แต่ยังไม่ชัดเจนพอ", "🟡"
+    return "ยังไม่เข้าเกณฑ์ — ราคายังไม่ได้ปรับตัวลงมากพอตามเกณฑ์ที่ตั้งไว้", "⚪"
+
+
 # ---------------------------------------------------------------------------
 # UI — Header
 # ---------------------------------------------------------------------------
 
 st.title("📉 Dip Screener")
 st.caption("หาหุ้นที่ราคาอยู่ในโซนน่าช้อน ใช้งานง่าย เปิดได้ทั้งมือถือและคอมพิวเตอร์")
+
+st.subheader("🔍 ค้นหาหุ้นที่สนใจ")
+col_a, col_b = st.columns([3, 1])
+with col_a:
+    search_ticker = st.text_input(
+        "พิมพ์ชื่อย่อหุ้น",
+        placeholder="เช่น AAPL, PTT.BK",
+        label_visibility="collapsed",
+    )
+with col_b:
+    search_btn = st.button("ค้นหา", use_container_width=True)
+
+if search_btn and search_ticker.strip():
+    t = search_ticker.strip().upper()
+    with st.spinner(f"กำลังตรวจสอบ {t}..."):
+        result = analyze_ticker(t)
+
+    if result is None:
+        st.error(
+            f"ไม่พบข้อมูลหุ้น {t} ตรวจสอบชื่อย่ออีกครั้ง "
+            "(หุ้นไทยต้องมี .BK ต่อท้าย เช่น PTT.BK)"
+        )
+    else:
+        score = normalize_score(pd.Series(result), DEFAULT_WEIGHTS)
+        msg, emoji = verdict_text(score)
+        st.markdown(
+            f"""
+            <div class="card" style="border-width:2px;">
+                <div class="card-top">
+                    <span class="ticker-name" style="font-size:1.4em">{result['Ticker']}</span>
+                    {score_badge(score)}
+                </div>
+                <div class="price-text">ราคาล่าสุด {result['ราคาล่าสุด']:.2f}
+                    (52w สูง {result['52wHigh']:.2f} / ต่ำ {result['52wLow']:.2f})</div>
+                <div style="margin-top:10px; font-size:1.05em;">{emoji} {msg}</div>
+                <div class="metric-row" style="margin-top:8px;">
+                    ตกจากจุดสูงสุด {result['%ต่ำกว่าจุดสูงสุด']:.1f}% ·
+                    RSI {result['RSI(14)']:.1f} ·
+                    เทียบ MA50 {result['%เทียบMA50']:.1f}% ·
+                    เทียบ MA200 {result['%เทียบMA200']:.1f}%
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        hist = yf.Ticker(t).history(period="1y", interval="1d", auto_adjust=True)
+        if not hist.empty:
+            chart_df = hist[["Close"]].copy()
+            chart_df["MA50"] = chart_df["Close"].rolling(50).mean()
+            chart_df["MA200"] = chart_df["Close"].rolling(200).mean()
+            st.line_chart(chart_df)
+
+st.divider()
+st.subheader("📋 หรือดูภาพรวมจากรายการเฝ้าดู")
 
 market = st.radio(
     "เลือกตลาด", ["สหรัฐฯ (US)", "ไทย (SET)", "ทั้งสอง"], index=2, horizontal=True
