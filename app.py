@@ -1,6 +1,6 @@
 """
-Dip Screener — หาหุ้นที่ราคาน่าช้อน (US + Thai/SET)
-ออกแบบให้ใช้งานง่ายทั้งบนมือถือและคอมพิวเตอร์
+PEAK GUESSING — หาหุ้นที่ราคาอยู่ในโซนน่าช้อน (US + Thai/SET)
+ธีมสปอร์ต มืด กระชับ ใช้งานง่ายทั้งมือถือและคอมพิวเตอร์
 
 รันด้วย: streamlit run app.py
 
@@ -11,6 +11,7 @@ Dip Screener — หาหุ้นที่ราคาน่าช้อน (U
 """
 
 import time
+import math
 from datetime import datetime
 
 import numpy as np
@@ -18,37 +19,82 @@ import pandas as pd
 import streamlit as st
 import yfinance as yf
 
-st.set_page_config(page_title="Dip Screener", page_icon="📉", layout="centered")
+st.set_page_config(page_title="Peak Guessing", page_icon="🏁", layout="centered")
 
 # ---------------------------------------------------------------------------
-# Mobile-friendly styling
+# Sport theme styling
 # ---------------------------------------------------------------------------
 
 st.markdown(
     """
     <style>
-    .block-container { padding-top: 1.5rem; padding-bottom: 3rem; max-width: 760px; }
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+    .block-container { padding-top: 1.3rem; padding-bottom: 3rem; max-width: 640px; }
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+
+    .kicker {
+        font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #C6FF3D;
+        font-weight: 600;
+    }
+    .title-big {
+        font-family: 'Oswald', sans-serif; font-size: 40px; line-height: 0.95; text-transform: uppercase;
+        font-weight: 700; margin: 8px 0 0; letter-spacing: -0.01em;
+    }
+    .accent-bar { width: 80px; height: 6px; background: #C6FF3D; margin: 12px 0 14px; transform: skewX(-18deg); }
+    .sub-text { font-size: 13px; color: #8A93A3; }
+    .section-label {
+        font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em;
+        font-size: 14px; color: #F5F6F8; margin-top: 22px; margin-bottom: 8px; font-weight: 600;
+    }
+
     div.stButton > button {
-        height: 3em; font-size: 1.05em; font-weight: 600; border-radius: 10px;
+        background: #C6FF3D !important; color: #0A0C10 !important; border: none !important;
+        font-family: 'Oswald', sans-serif !important; font-weight: 600 !important; letter-spacing: 0.03em !important;
+        text-transform: uppercase !important; border-radius: 10px !important; height: 3em !important;
     }
-    div[data-testid="stMetric"] {
-        background: rgba(120,120,120,0.08); border-radius: 12px; padding: 10px 14px;
+    div[role="radiogroup"] label {
+        background: #12151C; border: 1.5px solid #1E2430; border-radius: 8px; padding: 6px 14px !important;
+        font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 12.5px; font-weight: 700;
     }
+    div[data-testid="stExpander"] { background: #12151C; border: 1.5px solid #1E2430; border-radius: 10px; }
+
+    .scoreboard {
+        display: flex; background: #12151C; border: 1.5px solid #1E2430; border-radius: 12px;
+        overflow: hidden; margin: 16px 0;
+    }
+    .sb-cell { flex: 1; text-align: center; padding: 14px 8px; }
+    .sb-cell + .sb-cell { border-left: 1.5px solid #1E2430; }
+    .sb-v { font-family: 'Oswald', sans-serif; font-size: 26px; font-weight: 600; }
+    .sb-l { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #8A93A3; margin-top: 2px; }
+
     .card {
-        border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
-        background: rgba(120,120,120,0.06); border: 1px solid rgba(120,120,120,0.15);
+        background: #12151C; border: 1.5px solid #1E2430; border-left-width: 4px; border-radius: 10px;
+        padding: 14px; margin-bottom: 10px;
     }
     .card-top { display: flex; justify-content: space-between; align-items: center; }
-    .ticker-name { font-size: 1.15em; font-weight: 700; }
-    .price-text { font-size: 0.95em; opacity: 0.8; }
-    .badge {
-        display: inline-block; padding: 3px 10px; border-radius: 999px;
-        font-size: 0.85em; font-weight: 700;
+    .left { display: flex; align-items: center; gap: 8px; }
+    .flag {
+        font-size: 9px; font-weight: 700; letter-spacing: 0.04em; color: #5B6472;
+        border: 1px solid #262C38; border-radius: 4px; padding: 1px 5px;
     }
-    .badge-high { background: #1e7e34; color: white; }
-    .badge-mid { background: #b58105; color: white; }
-    .badge-low { background: #6c757d; color: white; }
-    .metric-row { font-size: 0.85em; opacity: 0.75; margin-top: 6px; }
+    .ticker { font-family: 'Oswald', sans-serif; font-size: 17px; font-weight: 600; }
+    .tag {
+        font-size: 10px; font-weight: 700; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 5px;
+        border: 1.5px solid; font-family: 'Oswald', sans-serif;
+    }
+    .card-mid { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+    .price { font-family: 'Oswald', sans-serif; font-size: 24px; font-weight: 500; }
+    .range { font-size: 10.5px; color: #5B6472; margin-top: 2px; }
+    .verdict-label { font-size: 11px; color: #8A93A3; margin-top: 6px; }
+    .stat-row { display: flex; gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #1E2430; }
+    .stat .v { font-size: 13px; font-weight: 600; }
+    .stat .l { font-size: 9px; color: #5B6472; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+
+    .footnote-box {
+        margin-top: 22px; padding: 14px; border-radius: 10px; background: #12151C;
+        border: 1px dashed #1E2430; font-size: 12px; color: #8A93A3; line-height: 1.7;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -158,37 +204,91 @@ def normalize_score(row: pd.Series, weights: dict) -> float:
     return round(score / total_weight, 1) if total_weight > 0 else np.nan
 
 
-def score_badge(score: float) -> str:
-    if pd.isna(score):
-        return '<span class="badge badge-low">ไม่มีข้อมูล</span>'
-    if score >= 70:
-        return f'<span class="badge badge-high">🟢 {score:.0f} น่าสนใจมาก</span>'
-    if score >= 40:
-        return f'<span class="badge badge-mid">🟡 {score:.0f} ปานกลาง</span>'
-    return f'<span class="badge badge-low">⚪ {score:.0f} ยังไม่เข้าเกณฑ์</span>'
-
-
 DEFAULT_WEIGHTS = {"off_high": 1.0, "rsi": 1.0, "ma50": 1.0, "ma200": 0.5}
 
 
-def verdict_text(score: float) -> tuple[str, str]:
+def tier_info(score: float) -> dict:
     if pd.isna(score):
-        return "ไม่มีข้อมูลเพียงพอสำหรับประเมิน", "⚪"
+        return {"label": "ไม่มีข้อมูล", "tag": "N/A", "color": "#5B6472"}
     if score >= 70:
-        return "น่าช้อน — เข้าเกณฑ์หลายอย่างพร้อมกัน ราคาปรับตัวลงมาน่าสนใจ", "🟢"
+        return {"label": "น่าช้อน", "tag": "HOT", "color": "#C6FF3D"}
     if score >= 40:
-        return "อยู่ในการจับตา — เริ่มมีสัญญาณน่าสนใจ แต่ยังไม่ชัดเจนพอ", "🟡"
-    return "ยังไม่เข้าเกณฑ์ — ราคายังไม่ได้ปรับตัวลงมากพอตามเกณฑ์ที่ตั้งไว้", "⚪"
+        return {"label": "จับตา", "tag": "WATCH", "color": "#FF6B35"}
+    return {"label": "ยังไม่เข้าเกณฑ์", "tag": "COLD", "color": "#5B6472"}
+
+
+def market_flag(ticker: str) -> str:
+    return "SET" if ticker.upper().endswith(".BK") else "US"
+
+
+def score_ring_svg(score: float, color: str, size: int = 60) -> str:
+    score_val = 0 if pd.isna(score) else max(0, min(score, 100))
+    stroke = 5
+    r = (size - stroke) / 2
+    c = 2 * math.pi * r
+    offset = c - (score_val / 100) * c
+    cx = cy = size / 2
+    label = "–" if pd.isna(score) else f"{score:.0f}"
+    return f"""
+    <svg width="{size}" height="{size}" viewBox="0 0 {size} {size}">
+        <circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="#1E2430" stroke-width="{stroke}" />
+        <circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{color}" stroke-width="{stroke}"
+            stroke-dasharray="{c:.2f}" stroke-dashoffset="{offset:.2f}" stroke-linecap="round"
+            transform="rotate(-90 {cx} {cy})" />
+        <text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle"
+            style="font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;fill:#F5F6F8;">{label}</text>
+    </svg>
+    """
+
+
+def render_card(ticker: str, price: float, low: float, high: float,
+                 off_high: float, rsi: float, ma50: float, score: float) -> None:
+    t = tier_info(score)
+    ring = score_ring_svg(score, t["color"])
+    st.markdown(
+        f"""
+        <div class="card" style="border-left-color:{t['color']}">
+            <div class="card-top">
+                <div class="left">
+                    <span class="flag">{market_flag(ticker)}</span>
+                    <span class="ticker">{ticker}</span>
+                </div>
+                <span class="tag" style="color:{t['color']};border-color:{t['color']}">{t['tag']}</span>
+            </div>
+            <div class="card-mid">
+                <div>
+                    <div class="price">{price:.2f}</div>
+                    <div class="range">52w {low:.2f}–{high:.2f}</div>
+                    <div class="verdict-label">{t['label']}</div>
+                </div>
+                {ring}
+            </div>
+            <div class="stat-row">
+                <div class="stat"><div class="v">{off_high:.1f}%</div><div class="l">Off-High</div></div>
+                <div class="stat"><div class="v">{rsi:.1f}</div><div class="l">RSI</div></div>
+                <div class="stat"><div class="v">{ma50:.1f}%</div><div class="l">MA50</div></div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 # ---------------------------------------------------------------------------
 # UI — Header
 # ---------------------------------------------------------------------------
 
-st.title("📉 Dip Screener")
-st.caption("หาหุ้นที่ราคาอยู่ในโซนน่าช้อน ใช้งานง่าย เปิดได้ทั้งมือถือและคอมพิวเตอร์")
+st.markdown(
+    """
+    <div class="kicker">● PEAK GUESSING</div>
+    <div class="title-big">PEAK<br/>GUESSING</div>
+    <div class="accent-bar"></div>
+    <div class="sub-text">จัดฟอร์มหุ้นแบบสนามแข่ง — หาราคาที่น่าช้อนได้ในไม่กี่วินาที</div>
+    """,
+    unsafe_allow_html=True,
+)
 
-st.subheader("🔍 ค้นหาหุ้นที่สนใจ")
+st.markdown('<div class="section-label">🔍 ค้นหาฟอร์มหุ้น</div>', unsafe_allow_html=True)
 col_a, col_b = st.columns([3, 1])
 with col_a:
     search_ticker = st.text_input(
@@ -201,7 +301,7 @@ with col_b:
 
 if search_btn and search_ticker.strip():
     t = search_ticker.strip().upper()
-    with st.spinner(f"กำลังตรวจสอบ {t}..."):
+    with st.spinner(f"กำลังตรวจสอบฟอร์ม {t}..."):
         result = analyze_ticker(t)
 
     if result is None:
@@ -211,26 +311,9 @@ if search_btn and search_ticker.strip():
         )
     else:
         score = normalize_score(pd.Series(result), DEFAULT_WEIGHTS)
-        msg, emoji = verdict_text(score)
-        st.markdown(
-            f"""
-            <div class="card" style="border-width:2px;">
-                <div class="card-top">
-                    <span class="ticker-name" style="font-size:1.4em">{result['Ticker']}</span>
-                    {score_badge(score)}
-                </div>
-                <div class="price-text">ราคาล่าสุด {result['ราคาล่าสุด']:.2f}
-                    (52w สูง {result['52wHigh']:.2f} / ต่ำ {result['52wLow']:.2f})</div>
-                <div style="margin-top:10px; font-size:1.05em;">{emoji} {msg}</div>
-                <div class="metric-row" style="margin-top:8px;">
-                    ตกจากจุดสูงสุด {result['%ต่ำกว่าจุดสูงสุด']:.1f}% ·
-                    RSI {result['RSI(14)']:.1f} ·
-                    เทียบ MA50 {result['%เทียบMA50']:.1f}% ·
-                    เทียบ MA200 {result['%เทียบMA200']:.1f}%
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        render_card(
+            result["Ticker"], result["ราคาล่าสุด"], result["52wLow"], result["52wHigh"],
+            result["%ต่ำกว่าจุดสูงสุด"], result["RSI(14)"], result["%เทียบMA50"], score,
         )
         hist = yf.Ticker(t).history(period="1y", interval="1d", auto_adjust=True)
         if not hist.empty:
@@ -239,11 +322,10 @@ if search_btn and search_ticker.strip():
             chart_df["MA200"] = chart_df["Close"].rolling(200).mean()
             st.line_chart(chart_df)
 
-st.divider()
-st.subheader("📋 หรือดูภาพรวมจากรายการเฝ้าดู")
+st.markdown('<div class="section-label">📋 ลีกหุ้นที่เฝ้าดู</div>', unsafe_allow_html=True)
 
 market = st.radio(
-    "เลือกตลาด", ["สหรัฐฯ (US)", "ไทย (SET)", "ทั้งสอง"], index=2, horizontal=True
+    "เลือกตลาด", ["ทั้งหมด", "US", "SET"], index=0, horizontal=True, label_visibility="collapsed"
 )
 
 with st.expander("⚙️ ตั้งค่าขั้นสูง (ไม่บังคับ)"):
@@ -263,10 +345,10 @@ with st.expander("⚙️ ตั้งค่าขั้นสูง (ไม่�
 weights = {"off_high": w_off_high, "rsi": w_rsi, "ma50": w_ma50, "ma200": w_ma200}
 
 tickers: list[str] = []
-if market in ("สหรัฐฯ (US)", "ทั้งสอง"):
-    tickers += [t.strip().upper() for t in us_text.split(",") if t.strip()]
-if market in ("ไทย (SET)", "ทั้งสอง"):
-    tickers += [t.strip().upper() for t in th_text.split(",") if t.strip()]
+if market in ("US", "ทั้งหมด"):
+    tickers += [x.strip().upper() for x in us_text.split(",") if x.strip()]
+if market in ("SET", "ทั้งหมด"):
+    tickers += [x.strip().upper() for x in th_text.split(",") if x.strip()]
 tickers = list(dict.fromkeys(tickers))
 
 refresh = st.button("🔄 ดึงข้อมูลล่าสุด", type="primary", use_container_width=True)
@@ -280,11 +362,11 @@ should_fetch = refresh or st.session_state["results"] is None
 if should_fetch:
     progress = st.progress(0.0, text="กำลังดึงข้อมูล...")
     rows = []
-    for i, t in enumerate(tickers):
-        r = analyze_ticker(t)
+    for i, tk in enumerate(tickers):
+        r = analyze_ticker(tk)
         if r:
             rows.append(r)
-        progress.progress((i + 1) / max(len(tickers), 1), text=f"ดึงข้อมูล {t}")
+        progress.progress((i + 1) / max(len(tickers), 1), text=f"ดึงข้อมูล {tk}")
         time.sleep(0.03)
     progress.empty()
 
@@ -307,34 +389,24 @@ if df is None or df.empty:
 else:
     st.caption(f"อัปเดตล่าสุด: {st.session_state['fetched_at']}")
 
-    n_high = int((df["คะแนนน่าช้อน"] >= 70).sum())
-    col1, col2, col3 = st.columns(3)
-    col1.metric("สแกนทั้งหมด", len(df))
-    col2.metric("น่าสนใจมาก 🟢", n_high)
-    col3.metric("คะแนนเฉลี่ย", f"{df['คะแนนน่าช้อน'].mean():.0f}")
-
-    st.subheader(f"อันดับหุ้นน่าช้อน (Top {top_n})")
+    n_hot = int((df["คะแนนน่าช้อน"] >= 70).sum())
+    avg_score = df["คะแนนน่าช้อน"].mean()
+    st.markdown(
+        f"""
+        <div class="scoreboard">
+            <div class="sb-cell"><div class="sb-v">{len(df)}</div><div class="sb-l">สแกน</div></div>
+            <div class="sb-cell"><div class="sb-v" style="color:#C6FF3D">{n_hot}</div><div class="sb-l">Hot</div></div>
+            <div class="sb-cell"><div class="sb-v">{avg_score:.0f}</div><div class="sb-l">เฉลี่ย</div></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     top = df.head(top_n)
     for _, row in top.iterrows():
-        st.markdown(
-            f"""
-            <div class="card">
-                <div class="card-top">
-                    <span class="ticker-name">{row['Ticker']}</span>
-                    {score_badge(row['คะแนนน่าช้อน'])}
-                </div>
-                <div class="price-text">ราคาล่าสุด {row['ราคาล่าสุด']:.2f}
-                    (52w สูง {row['52wHigh']:.2f} / ต่ำ {row['52wLow']:.2f})</div>
-                <div class="metric-row">
-                    ตกจากจุดสูงสุด {row['%ต่ำกว่าจุดสูงสุด']:.1f}% ·
-                    RSI {row['RSI(14)']:.1f} ·
-                    เทียบ MA50 {row['%เทียบMA50']:.1f}% ·
-                    เทียบ MA200 {row['%เทียบMA200']:.1f}%
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        render_card(
+            row["Ticker"], row["ราคาล่าสุด"], row["52wLow"], row["52wHigh"],
+            row["%ต่ำกว่าจุดสูงสุด"], row["RSI(14)"], row["%เทียบMA50"], row["คะแนนน่าช้อน"],
         )
 
     with st.expander("📊 ดูตารางแบบเต็ม / ดาวน์โหลด CSV"):
@@ -342,7 +414,7 @@ else:
         st.download_button(
             "⬇️ ดาวน์โหลด CSV",
             df.to_csv(index=False).encode("utf-8-sig"),
-            file_name="dip_screener.csv",
+            file_name="peak_guessing.csv",
             mime="text/csv",
             use_container_width=True,
         )
@@ -357,15 +429,16 @@ else:
                 chart_df["MA200"] = chart_df["Close"].rolling(200).mean()
                 st.line_chart(chart_df)
 
-st.divider()
-with st.expander("ℹ️ หมายเหตุสำคัญ"):
-    st.markdown(
-        """
-- **ไม่ใช่ real-time tick แบบแอปโบรกเกอร์** — ข้อมูลจาก Yahoo Finance ผ่าน yfinance
-  ปกติหน่วงราวไม่กี่นาทีถึง ~15 นาที เพียงพอสำหรับสแกนหาโอกาส แต่ไม่เหมาะกับการเทรดที่ต้องการราคาสด
-- **Webull ไม่มี public API อย่างเป็นทางการ** สำหรับนักพัฒนาภายนอก แอปนี้จึงใช้ Yahoo Finance แทน
-  คุณยังส่งคำสั่งซื้อขายจริงผ่าน Webull ได้ตามปกติ
-- คะแนน "น่าช้อน" เป็นแค่ตัวช่วยกรองตามเทคนิคที่คุณเลือกเอง **ไม่ใช่คำแนะนำการลงทุน**
-- รายชื่อหุ้น SET เริ่มต้นเป็นชุดหุ้นใหญ่คุ้นเคย ไม่ใช่ SET50 ที่อัปเดตล่าสุดเป๊ะ แก้ไขได้ในตั้งค่าขั้นสูง
-        """
-    )
+st.markdown(
+    """
+    <div class="footnote-box">
+    ⓘ <b>ไม่ใช่ real-time tick แบบแอปโบรกเกอร์</b> — ข้อมูลจาก Yahoo Finance ผ่าน yfinance
+    ปกติหน่วงราวไม่กี่นาทีถึง ~15 นาที เพียงพอสำหรับสแกนหาโอกาส แต่ไม่เหมาะกับการเทรดที่ต้องการราคาสด<br/><br/>
+    <b>Webull ไม่มี public API อย่างเป็นทางการ</b> สำหรับนักพัฒนาภายนอก แอปนี้จึงใช้ Yahoo Finance แทน
+    คุณยังส่งคำสั่งซื้อขายจริงผ่าน Webull ได้ตามปกติ<br/><br/>
+    คะแนน "ฟอร์ม" เป็นแค่ตัวช่วยกรองตามเทคนิคที่คุณเลือกเอง <b>ไม่ใช่คำแนะนำการลงทุน</b> —
+    รายชื่อหุ้น SET เริ่มต้นเป็นชุดหุ้นใหญ่คุ้นเคย ไม่ใช่ SET50 ที่อัปเดตล่าสุดเป๊ะ แก้ไขได้ในตั้งค่าขั้นสูง
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
