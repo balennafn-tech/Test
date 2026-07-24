@@ -10,6 +10,7 @@ PEAK GUESSING — หาหุ้นที่ราคาอยู่ในโ�
 ที่ต้องการราคาแบบ tick จริง
 """
 
+import re
 import time
 import math
 from datetime import datetime
@@ -20,6 +21,16 @@ import streamlit as st
 import yfinance as yf
 
 st.set_page_config(page_title="Peak Guessing", page_icon="🏁", layout="centered")
+
+
+def _html(s: str) -> str:
+    """Collapse a multi-line/indented HTML string to one line.
+
+    Streamlit's markdown renderer treats lines indented 4+ spaces as a
+    code block, which leaks raw tags as visible text on nested <div>
+    markup. Stripping newlines/indentation avoids that entirely.
+    """
+    return re.sub(r"\n\s*", " ", s.strip())
 
 # ---------------------------------------------------------------------------
 # Sport theme styling
@@ -229,7 +240,7 @@ def score_ring_svg(score: float, color: str, size: int = 60) -> str:
     offset = c - (score_val / 100) * c
     cx = cy = size / 2
     label = "–" if pd.isna(score) else f"{score:.0f}"
-    return f"""
+    return _html(f"""
     <svg width="{size}" height="{size}" viewBox="0 0 {size} {size}">
         <circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="#1E2430" stroke-width="{stroke}" />
         <circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{color}" stroke-width="{stroke}"
@@ -238,7 +249,7 @@ def score_ring_svg(score: float, color: str, size: int = 60) -> str:
         <text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle"
             style="font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;fill:#F5F6F8;">{label}</text>
     </svg>
-    """
+    """)
 
 
 def render_card(ticker: str, price: float, low: float, high: float,
@@ -246,7 +257,7 @@ def render_card(ticker: str, price: float, low: float, high: float,
     t = tier_info(score)
     ring = score_ring_svg(score, t["color"])
     st.markdown(
-        f"""
+        _html(f"""
         <div class="card" style="border-left-color:{t['color']}">
             <div class="card-top">
                 <div class="left">
@@ -269,7 +280,7 @@ def render_card(ticker: str, price: float, low: float, high: float,
                 <div class="stat"><div class="v">{ma50:.1f}%</div><div class="l">MA50</div></div>
             </div>
         </div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
 
@@ -279,12 +290,12 @@ def render_card(ticker: str, price: float, low: float, high: float,
 # ---------------------------------------------------------------------------
 
 st.markdown(
-    """
+    _html("""
     <div class="kicker">● PEAK GUESSING</div>
     <div class="title-big">PEAK<br/>GUESSING</div>
     <div class="accent-bar"></div>
     <div class="sub-text">จัดฟอร์มหุ้นแบบสนามแข่ง — หาราคาที่น่าช้อนได้ในไม่กี่วินาที</div>
-    """,
+    """),
     unsafe_allow_html=True,
 )
 
@@ -392,13 +403,13 @@ else:
     n_hot = int((df["คะแนนน่าช้อน"] >= 70).sum())
     avg_score = df["คะแนนน่าช้อน"].mean()
     st.markdown(
-        f"""
+        _html(f"""
         <div class="scoreboard">
             <div class="sb-cell"><div class="sb-v">{len(df)}</div><div class="sb-l">สแกน</div></div>
             <div class="sb-cell"><div class="sb-v" style="color:#C6FF3D">{n_hot}</div><div class="sb-l">Hot</div></div>
             <div class="sb-cell"><div class="sb-v">{avg_score:.0f}</div><div class="sb-l">เฉลี่ย</div></div>
         </div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
 
@@ -430,7 +441,7 @@ else:
                 st.line_chart(chart_df)
 
 st.markdown(
-    """
+    _html("""
     <div class="footnote-box">
     ⓘ <b>ไม่ใช่ real-time tick แบบแอปโบรกเกอร์</b> — ข้อมูลจาก Yahoo Finance ผ่าน yfinance
     ปกติหน่วงราวไม่กี่นาทีถึง ~15 นาที เพียงพอสำหรับสแกนหาโอกาส แต่ไม่เหมาะกับการเทรดที่ต้องการราคาสด<br/><br/>
@@ -439,6 +450,6 @@ st.markdown(
     คะแนน "ฟอร์ม" เป็นแค่ตัวช่วยกรองตามเทคนิคที่คุณเลือกเอง <b>ไม่ใช่คำแนะนำการลงทุน</b> —
     รายชื่อหุ้น SET เริ่มต้นเป็นชุดหุ้นใหญ่คุ้นเคย ไม่ใช่ SET50 ที่อัปเดตล่าสุดเป๊ะ แก้ไขได้ในตั้งค่าขั้นสูง
     </div>
-    """,
+    """),
     unsafe_allow_html=True,
 )
