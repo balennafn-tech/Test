@@ -106,6 +106,10 @@ st.markdown(
         width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
         font-size: 15px; font-weight: 800; color: #fff; flex-shrink: 0;
     }}
+    .avatar-img {{
+        width: 42px; height: 42px; border-radius: 11px; object-fit: contain; background: #fff;
+        flex-shrink: 0; display: block; padding: 4px; border: 1px solid {c['border']}; box-sizing: border-box;
+    }}
     .ticker {{ font-size: 22px; font-weight: 800; display: block; }}
     .flag {{
         font-size: 11.5px; font-weight: 600; color: {c['text2']}; border: 1px solid {c['border']};
@@ -285,6 +289,54 @@ def ticker_initials(ticker: str) -> str:
     return ticker.split(".")[0][:2].upper()
 
 
+# แมปชื่อย่อหุ้น -> โดเมนบริษัท สำหรับดึงโลโก้จาก Clearbit (ฟรี ไม่ต้องมี API key)
+# ครอบคลุมเฉพาะตัวที่มั่นใจโดเมนถูกต้อง — ตัวที่ไม่มีในนี้จะใช้ตัวอักษรย่อสีแทนอัตโนมัติ
+TICKER_DOMAINS = {
+    # US
+    "AAPL": "apple.com", "MSFT": "microsoft.com", "GOOGL": "google.com",
+    "AMZN": "amazon.com", "NVDA": "nvidia.com", "META": "meta.com",
+    "TSLA": "tesla.com", "JPM": "jpmorganchase.com", "V": "visa.com",
+    "JNJ": "jnj.com", "WMT": "walmart.com", "PG": "pg.com",
+    "UNH": "unitedhealthgroup.com", "HD": "homedepot.com", "MA": "mastercard.com",
+    "DIS": "disney.com", "BAC": "bankofamerica.com", "XOM": "exxonmobil.com",
+    "CVX": "chevron.com", "KO": "coca-cola.com", "PEP": "pepsico.com",
+    "ABBV": "abbvie.com", "MRK": "merck.com", "COST": "costco.com",
+    "AVGO": "broadcom.com", "ADBE": "adobe.com", "CRM": "salesforce.com",
+    "NFLX": "netflix.com", "AMD": "amd.com", "INTC": "intel.com",
+    "CSCO": "cisco.com", "PFE": "pfizer.com", "TMO": "thermofisher.com",
+    "ABT": "abbott.com", "ACN": "accenture.com", "NKE": "nike.com",
+    "TXN": "ti.com", "MCD": "mcdonalds.com", "QCOM": "qualcomm.com", "IBM": "ibm.com",
+    # SET (หุ้นไทย)
+    "PTT.BK": "pttplc.com", "PTTEP.BK": "pttep.com", "TOP.BK": "thaioilgroup.com",
+    "IVL.BK": "indoramaventures.com", "GULF.BK": "gulf.co.th", "EGCO.BK": "egco.com",
+    "BANPU.BK": "banpu.com", "OR.BK": "pttor.com", "ADVANC.BK": "ais.co.th",
+    "TRUE.BK": "true.th", "KBANK.BK": "kasikornbank.com", "SCB.BK": "scb.co.th",
+    "BBL.BK": "bangkokbank.com", "KTB.BK": "ktb.co.th", "TTB.BK": "ttbbank.com",
+    "CPALL.BK": "cpall.co.th", "CPF.BK": "cpfworldwide.com", "HMPRO.BK": "homepro.co.th",
+    "CRC.BK": "centralretail.com", "COM7.BK": "com7.co.th", "TU.BK": "thaiunion.com",
+    "BJC.BK": "bjc.co.th", "OSP.BK": "osotspa.com", "LH.BK": "lh.co.th",
+    "SPALI.BK": "supalai.com", "SIRI.BK": "sansiri.com", "CPN.BK": "centralpattana.co.th",
+    "SCC.BK": "scg.com", "SCGP.BK": "scgp.com", "DELTA.BK": "deltathailand.com",
+    "KCE.BK": "kce.com", "BDMS.BK": "bdms.co.th", "BH.BK": "bumrungrad.com",
+    "AOT.BK": "airportthai.co.th", "BTS.BK": "btsgroup.co.th", "MINT.BK": "minor.com",
+    "KTC.BK": "ktc.co.th",
+}
+
+
+def render_avatar(ticker: str) -> str:
+    """โลโก้บริษัทถ้ามีโดเมนที่มั่นใจ ไม่งั้น fallback เป็นตัวอักษรย่อสีอัตโนมัติถ้าโหลดโลโก้ไม่ได้"""
+    color = ticker_color(ticker)
+    initials = ticker_initials(ticker)
+    domain = TICKER_DOMAINS.get(ticker.upper())
+    if not domain:
+        return f'<div class="avatar" style="background:{color}">{initials}</div>'
+    return (
+        f'<img src="https://logo.clearbit.com/{domain}?size=80" class="avatar-img" '
+        f"onerror=\"this.style.display='none';this.nextElementSibling.style.display='flex';\" />"
+        f'<div class="avatar" style="display:none;background:{color}">{initials}</div>'
+    )
+
+
 def tradingview_symbol(ticker: str) -> str:
     """แปลงชื่อย่อหุ้นของเราเป็นรูปแบบสัญลักษณ์ที่ TradingView เข้าใจ"""
     if ticker.upper().endswith(".BK"):
@@ -334,7 +386,7 @@ def render_card(ticker: str, price: float, low: float, high: float,
         <div class="card">
             <div class="row-top">
                 <div class="left">
-                    <div class="avatar" style="background:{ticker_color(ticker)}">{ticker_initials(ticker)}</div>
+                    {render_avatar(ticker)}
                     <div>
                         <span class="ticker">{ticker}</span>
                         <span class="flag">{market_flag(ticker)}</span>
