@@ -140,16 +140,33 @@ DEFAULT_US = [
 ]
 
 DEFAULT_TH = [
-    "PTT.BK", "PTTEP.BK", "CPALL.BK", "AOT.BK", "ADVANC.BK", "SCB.BK", "KBANK.BK",
-    "BBL.BK", "SCC.BK", "CPF.BK", "TRUE.BK", "TOP.BK", "IVL.BK", "BDMS.BK",
-    "BH.BK", "CENTEL.BK", "MINT.BK", "HMPRO.BK", "CRC.BK", "GULF.BK", "GPSC.BK",
-    "EGCO.BK", "RATCH.BK", "BGRIM.BK", "TISCO.BK", "TTB.BK", "KTB.BK", "KKP.BK",
-    "OSP.BK", "CBG.BK", "TU.BK", "SAWAD.BK", "MTC.BK", "JMT.BK", "AWC.BK",
-    "LH.BK", "SPALI.BK", "AMATA.BK", "WHA.BK", "BTS.BK", "BEM.BK", "DELTA.BK",
-    "KCE.BK", "HANA.BK", "SIRI.BK", "SCGP.BK", "COM7.BK",
-    "INTUCH.BK", "OR.BK", "SCBX.BK", "CPN.BK", "BANPU.BK", "IRPC.BK", "PTG.BK",
-    "BJC.BK", "CK.BK", "TIDLOR.BK", "BLA.BK", "KTC.BK", "TCAP.BK", "BCP.BK",
-    "GFPT.BK", "MAJOR.BK", "AP.BK", "ORI.BK", "SCCC.BK", "STA.BK",
+    # ธนาคาร/การเงิน
+    "PTT.BK", "PTTEP.BK", "SCB.BK", "KBANK.BK", "BBL.BK", "TTB.BK", "KTB.BK", "KKP.BK",
+    "TISCO.BK", "TCAP.BK", "SCBX.BK", "KTC.BK", "BAM.BK", "LHFG.BK",
+    # พลังงาน/ปิโตรเคมี
+    "TOP.BK", "IVL.BK", "GULF.BK", "GPSC.BK", "EGCO.BK", "RATCH.BK", "BGRIM.BK",
+    "BANPU.BK", "IRPC.BK", "PTG.BK", "OR.BK", "BCP.BK", "PTTGC.BK", "SPRC.BK",
+    "ESSO.BK", "BPP.BK", "CKP.BK", "GUNKUL.BK", "ACE.BK",
+    # สื่อสาร/ไอซีที
+    "ADVANC.BK", "TRUE.BK", "INTUCH.BK", "JAS.BK", "VGI.BK", "PLANB.BK",
+    # ค้าปลีก/สินค้าอุปโภคบริโภค
+    "CPALL.BK", "HMPRO.BK", "CRC.BK", "COM7.BK", "CPF.BK", "TU.BK", "OSP.BK", "CBG.BK",
+    "GFPT.BK", "MAKRO.BK", "CPAXT.BK", "DOHOME.BK", "GLOBAL.BK", "ICHI.BK",
+    "MALEE.BK", "SAPPE.BK", "TACC.BK", "BJC.BK",
+    # อสังหาริมทรัพย์
+    "LH.BK", "SPALI.BK", "AWC.BK", "SIRI.BK", "ORI.BK", "AP.BK", "AMATA.BK", "WHA.BK",
+    "QH.BK", "PSH.BK", "SC.BK", "ANAN.BK", "LPN.BK", "NOBLE.BK", "CPN.BK",
+    # วัสดุ/อุตสาหกรรม
+    "SCC.BK", "SCGP.BK", "SCCC.BK", "DELTA.BK", "HANA.BK", "KCE.BK", "TASCO.BK",
+    "STGT.BK", "STA.BK", "TVO.BK", "SAT.BK", "STANLY.BK", "CK.BK",
+    # โรงพยาบาล/สุขภาพ
+    "BDMS.BK", "BH.BK", "BCH.BK", "CHG.BK", "RJH.BK", "EKH.BK", "PR9.BK", "VIBHA.BK",
+    # ท่องเที่ยว/ขนส่ง
+    "AOT.BK", "BTS.BK", "BEM.BK", "CENTEL.BK", "MINT.BK", "AAV.BK", "PSL.BK", "TTA.BK",
+    # ประกัน/ไฟแนนซ์
+    "BLA.BK", "TLI.BK", "TIP.BK", "SAWAD.BK", "MTC.BK", "JMT.BK", "TIDLOR.BK", "MICRO.BK",
+    # สื่อ/บันเทิง
+    "MAJOR.BK", "ONEE.BK", "RS.BK",
 ]
 # หมายเหตุ: รายชื่อ SET เป็นชุดหุ้นขนาดใหญ่ที่คุ้นเคย ไม่ใช่ SET50 อย่างเป๊ะ ณ ปัจจุบัน
 # ตรวจ/ปรับรายชื่อจริงได้ที่เว็บ SET ก่อนใช้งานจริง
@@ -377,8 +394,16 @@ with st.expander("⚙️ ตั้งค่าขั้นสูง (ไม่�
         w_ma50 = st.slider("ต่ำกว่าเส้นค่าเฉลี่ย 50 วัน", 0.0, 3.0, 1.0, 0.1)
         w_ma200 = st.slider("ต่ำกว่าเส้นค่าเฉลี่ย 200 วัน", 0.0, 3.0, 0.5, 0.1)
 
-    us_text = st.text_area("รายชื่อหุ้น US", ", ".join(DEFAULT_US), height=80)
-    th_text = st.text_area("รายชื่อหุ้น SET (.BK)", ", ".join(DEFAULT_TH), height=80)
+    st.markdown('<div class="section-label" style="margin-top:14px;">🇺🇸 หุ้น US</div>', unsafe_allow_html=True)
+    us_text = st.text_area(
+        f"รายชื่อหุ้น US ({len(DEFAULT_US)} ตัว)", ", ".join(DEFAULT_US),
+        height=90, label_visibility="collapsed",
+    )
+    st.markdown('<div class="section-label" style="margin-top:10px;">🇹🇭 หุ้นไทย (SET)</div>', unsafe_allow_html=True)
+    th_text = st.text_area(
+        f"รายชื่อหุ้นไทย ({len(DEFAULT_TH)} ตัว)", ", ".join(DEFAULT_TH),
+        height=170, label_visibility="collapsed",
+    )
     top_n = st.slider("แสดงกี่อันดับแรก", 5, 30, 10)
 
 weights = {"off_high": w_off_high, "rsi": w_rsi, "ma50": w_ma50, "ma200": w_ma200}
