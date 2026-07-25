@@ -141,33 +141,26 @@ DEFAULT_US = [
 ]
 
 DEFAULT_TH = [
-    # ธนาคาร/การเงิน
-    "PTT.BK", "PTTEP.BK", "SCB.BK", "KBANK.BK", "BBL.BK", "TTB.BK", "KTB.BK", "KKP.BK",
-    "TISCO.BK", "TCAP.BK", "SCBX.BK", "KTC.BK", "BAM.BK", "LHFG.BK",
     # พลังงาน/ปิโตรเคมี
-    "TOP.BK", "IVL.BK", "GULF.BK", "GPSC.BK", "EGCO.BK", "RATCH.BK", "BGRIM.BK",
-    "BANPU.BK", "IRPC.BK", "PTG.BK", "OR.BK", "BCP.BK", "PTTGC.BK", "SPRC.BK",
-    "ESSO.BK", "BPP.BK", "CKP.BK", "GUNKUL.BK", "ACE.BK",
-    # สื่อสาร/ไอซีที
-    "ADVANC.BK", "TRUE.BK", "INTUCH.BK", "JAS.BK", "VGI.BK", "PLANB.BK",
+    "PTT.BK", "PTTEP.BK", "TOP.BK", "IVL.BK", "GULF.BK", "GPSC.BK", "EGCO.BK",
+    "RATCH.BK", "BGRIM.BK", "OR.BK", "BANPU.BK",
+    # สื่อสาร
+    "ADVANC.BK", "TRUE.BK", "INTUCH.BK",
+    # ธนาคาร
+    "KBANK.BK", "SCB.BK", "BBL.BK", "KTB.BK", "TTB.BK",
     # ค้าปลีก/สินค้าอุปโภคบริโภค
-    "CPALL.BK", "HMPRO.BK", "CRC.BK", "COM7.BK", "CPF.BK", "TU.BK", "OSP.BK", "CBG.BK",
-    "GFPT.BK", "MAKRO.BK", "CPAXT.BK", "DOHOME.BK", "GLOBAL.BK", "ICHI.BK",
-    "MALEE.BK", "SAPPE.BK", "TACC.BK", "BJC.BK",
+    "CPALL.BK", "CPF.BK", "HMPRO.BK", "CRC.BK", "COM7.BK", "TU.BK", "CPAXT.BK",
+    "BJC.BK", "OSP.BK",
     # อสังหาริมทรัพย์
-    "LH.BK", "SPALI.BK", "AWC.BK", "SIRI.BK", "ORI.BK", "AP.BK", "AMATA.BK", "WHA.BK",
-    "QH.BK", "PSH.BK", "SC.BK", "ANAN.BK", "LPN.BK", "NOBLE.BK", "CPN.BK",
+    "LH.BK", "SPALI.BK", "AWC.BK", "SIRI.BK", "CPN.BK", "AP.BK",
     # วัสดุ/อุตสาหกรรม
-    "SCC.BK", "SCGP.BK", "SCCC.BK", "DELTA.BK", "HANA.BK", "KCE.BK", "TASCO.BK",
-    "STGT.BK", "STA.BK", "TVO.BK", "SAT.BK", "STANLY.BK", "CK.BK",
-    # โรงพยาบาล/สุขภาพ
-    "BDMS.BK", "BH.BK", "BCH.BK", "CHG.BK", "RJH.BK", "EKH.BK", "PR9.BK", "VIBHA.BK",
+    "SCC.BK", "SCGP.BK", "DELTA.BK", "HANA.BK", "KCE.BK",
+    # โรงพยาบาล
+    "BDMS.BK", "BH.BK",
     # ท่องเที่ยว/ขนส่ง
-    "AOT.BK", "BTS.BK", "BEM.BK", "CENTEL.BK", "MINT.BK", "AAV.BK", "PSL.BK", "TTA.BK",
-    # ประกัน/ไฟแนนซ์
-    "BLA.BK", "TLI.BK", "TIP.BK", "SAWAD.BK", "MTC.BK", "JMT.BK", "TIDLOR.BK", "MICRO.BK",
-    # สื่อ/บันเทิง
-    "MAJOR.BK", "ONEE.BK", "RS.BK",
+    "AOT.BK", "BTS.BK", "BEM.BK", "CENTEL.BK", "MINT.BK",
+    # ไฟแนนซ์
+    "SAWAD.BK", "MTC.BK", "JMT.BK", "KTC.BK",
 ]
 # หมายเหตุ: รายชื่อ SET เป็นชุดหุ้นขนาดใหญ่ที่คุ้นเคย ไม่ใช่ SET50 อย่างเป๊ะ ณ ปัจจุบัน
 # ตรวจ/ปรับรายชื่อจริงได้ที่เว็บ SET ก่อนใช้งานจริง
