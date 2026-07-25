@@ -1,5 +1,5 @@
 """
-PEAK GUESSING — หาหุ้นที่ราคาอยู่ในโซนน่าช้อน (US + Thai/SET)
+PEAK GUESSING — หาหุ้นที่ราคาอยู่ในโซนน่าซื้อเก็บไว้ (US + Thai/SET)
 ธีมเรียบง่าย ตัวอักษรใหญ่อ่านง่าย รองรับสลับโหมดมืด/สว่าง
 
 รันด้วย: streamlit run app.py
@@ -147,6 +147,9 @@ DEFAULT_TH = [
     "OSP.BK", "CBG.BK", "TU.BK", "SAWAD.BK", "MTC.BK", "JMT.BK", "AWC.BK",
     "LH.BK", "SPALI.BK", "AMATA.BK", "WHA.BK", "BTS.BK", "BEM.BK", "DELTA.BK",
     "KCE.BK", "HANA.BK", "SIRI.BK", "SCGP.BK", "COM7.BK",
+    "INTUCH.BK", "OR.BK", "SCBX.BK", "CPN.BK", "BANPU.BK", "IRPC.BK", "PTG.BK",
+    "BJC.BK", "CK.BK", "TIDLOR.BK", "BLA.BK", "KTC.BK", "TCAP.BK", "BCP.BK",
+    "GFPT.BK", "MAJOR.BK", "AP.BK", "ORI.BK", "SCCC.BK", "STA.BK",
 ]
 # หมายเหตุ: รายชื่อ SET เป็นชุดหุ้นขนาดใหญ่ที่คุ้นเคย ไม่ใช่ SET50 อย่างเป๊ะ ณ ปัจจุบัน
 # ตรวจ/ปรับรายชื่อจริงได้ที่เว็บ SET ก่อนใช้งานจริง
@@ -239,7 +242,7 @@ def tier_info(score: float) -> dict:
     if pd.isna(score):
         return {"label": "ไม่มีข้อมูล", "color": "#8A8F98"}
     if score >= 70:
-        return {"label": "น่าช้อน", "color": "#2FA84F"}
+        return {"label": "น่าซื้อเก็บไว้", "color": "#2FA84F"}
     if score >= 40:
         return {"label": "จับตา", "color": "#D98A1F"}
     return {"label": "ยังไม่เข้าเกณฑ์", "color": "#8A8F98"}
@@ -314,7 +317,7 @@ with col_title:
     st.markdown(
         _html("""
         <div class="title-big">Peak Guessing</div>
-        <div class="sub-text">หาหุ้นน่าช้อน แบบเรียบง่าย ใช้งานไว</div>
+        <div class="sub-text">หาหุ้นน่าซื้อเก็บไว้ แบบเรียบง่าย ใช้งานไว</div>
         """),
         unsafe_allow_html=True,
     )
@@ -408,8 +411,8 @@ if should_fetch:
 
     df = pd.DataFrame(rows)
     if not df.empty:
-        df["คะแนนน่าช้อน"] = df.apply(lambda r: normalize_score(r, weights), axis=1)
-        df = df.sort_values("คะแนนน่าช้อน", ascending=False).reset_index(drop=True)
+        df["คะแนนน่าซื้อเก็บไว้"] = df.apply(lambda r: normalize_score(r, weights), axis=1)
+        df = df.sort_values("คะแนนน่าซื้อเก็บไว้", ascending=False).reset_index(drop=True)
 
     st.session_state["results"] = df
     st.session_state["fetched_at"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -425,13 +428,13 @@ if df is None or df.empty:
 else:
     st.caption(f"อัปเดตล่าสุด: {st.session_state['fetched_at']}")
 
-    n_hot = int((df["คะแนนน่าช้อน"] >= 70).sum())
-    avg_score = df["คะแนนน่าช้อน"].mean()
+    n_hot = int((df["คะแนนน่าซื้อเก็บไว้"] >= 70).sum())
+    avg_score = df["คะแนนน่าซื้อเก็บไว้"].mean()
     st.markdown(
         _html(f"""
         <div class="summary">
             <div class="sm-cell"><div class="sm-v">{len(df)}</div><div class="sm-l">สแกน</div></div>
-            <div class="sm-cell"><div class="sm-v" style="color:#2FA84F">{n_hot}</div><div class="sm-l">น่าช้อน</div></div>
+            <div class="sm-cell"><div class="sm-v" style="color:#2FA84F">{n_hot}</div><div class="sm-l">น่าซื้อ</div></div>
             <div class="sm-cell"><div class="sm-v">{avg_score:.0f}</div><div class="sm-l">เฉลี่ย</div></div>
         </div>
         """),
@@ -442,7 +445,7 @@ else:
     for _, row in top.iterrows():
         render_card(
             row["Ticker"], row["ราคาล่าสุด"], row["52wLow"], row["52wHigh"],
-            row["%ต่ำกว่าจุดสูงสุด"], row["RSI(14)"], row["%เทียบMA50"], row["คะแนนน่าช้อน"],
+            row["%ต่ำกว่าจุดสูงสุด"], row["RSI(14)"], row["%เทียบMA50"], row["คะแนนน่าซื้อเก็บไว้"],
         )
 
     with st.expander("📊 ดูตารางแบบเต็ม / ดาวน์โหลด CSV"):
