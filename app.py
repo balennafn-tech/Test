@@ -11,7 +11,6 @@ PEAK GUESSING — หาหุ้นที่ราคาอยู่ในโ�
 """
 
 import re
-import time
 from datetime import datetime
 
 import numpy as np
@@ -19,8 +18,14 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 import yfinance as yf
+from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Peak Guessing", page_icon="🏁", layout="centered")
+
+# อัปเดตข้อมูลอัตโนมัติทุก 60 วินาที โดยไม่ต้องกดปุ่ม
+# (ตั้งถี่กว่านี้ไม่มีประโยชน์ เพราะ Yahoo Finance เองอัปเดตราคาไม่เกินทุก ~15 นาทีอยู่แล้ว
+#  และการยิงคำขอถี่เกินไปเสี่ยงโดน Yahoo Finance จำกัดการเข้าถึง)
+st_autorefresh(interval=60_000, key="auto_refresh")
 
 
 def _html(s: str) -> str:
@@ -412,71 +417,31 @@ market = st.radio(
     "เลือกตลาด", ["ทั้งหมด", "US", "SET"], index=0, horizontal=True, label_visibility="collapsed"
 )
 
-with st.expander("⚙️ ตั้งค่าขั้นสูง (ไม่บังคับ)"):
-    st.caption("ปรับน้ำหนักแต่ละเงื่อนไข หรือแก้รายชื่อหุ้นเองได้ที่นี่")
-    c1, c2 = st.columns(2)
-    with c1:
-        w_off_high = st.slider("ตกจากจุดสูงสุด 52 สัปดาห์", 0.0, 3.0, 1.0, 0.1)
-        w_rsi = st.slider("RSI ต่ำ (oversold)", 0.0, 3.0, 1.0, 0.1)
-    with c2:
-        w_ma50 = st.slider("ต่ำกว่าเส้นค่าเฉลี่ย 50 วัน", 0.0, 3.0, 1.0, 0.1)
-        w_ma200 = st.slider("ต่ำกว่าเส้นค่าเฉลี่ย 200 วัน", 0.0, 3.0, 0.5, 0.1)
-
-    st.markdown('<div class="section-label" style="margin-top:14px;">🇺🇸 หุ้น US</div>', unsafe_allow_html=True)
-    us_text = st.text_area(
-        f"รายชื่อหุ้น US ({len(DEFAULT_US)} ตัว)", ", ".join(DEFAULT_US),
-        height=90, label_visibility="collapsed",
-    )
-    st.markdown('<div class="section-label" style="margin-top:10px;">🇹🇭 หุ้นไทย (SET)</div>', unsafe_allow_html=True)
-    th_text = st.text_area(
-        f"รายชื่อหุ้นไทย ({len(DEFAULT_TH)} ตัว)", ", ".join(DEFAULT_TH),
-        height=170, label_visibility="collapsed",
-    )
-    top_n = st.slider("แสดงกี่อันดับแรก", 5, 30, 10)
-
-weights = {"off_high": w_off_high, "rsi": w_rsi, "ma50": w_ma50, "ma200": w_ma200}
+weights = DEFAULT_WEIGHTS
+top_n = 15
 
 tickers: list[str] = []
 if market in ("US", "ทั้งหมด"):
-    tickers += [x.strip().upper() for x in us_text.split(",") if x.strip()]
+    tickers += [x.strip().upper() for x in DEFAULT_US]
 if market in ("SET", "ทั้งหมด"):
-    tickers += [x.strip().upper() for x in th_text.split(",") if x.strip()]
+    tickers += [x.strip().upper() for x in DEFAULT_TH]
 tickers = list(dict.fromkeys(tickers))
 
-refresh = st.button("🔄 ดึงข้อมูลล่าสุด", type="primary", use_container_width=True)
+progress = st.progress(0.0, text="กำลังดึงข้อมูล...")
+rows = []
+for i, tk in enumerate(tickers):
+    r = analyze_ticker(tk)
+    if r:
+        rows.append(r)
+    progress.progress((i + 1) / max(len(tickers), 1), text=f"ดึงข้อมูล {tk}")
+progress.empty()
 
-if "results" not in st.session_state:
-    st.session_state["results"] = None
-    st.session_state["fetched_at"] = None
-    st.session_state["last_market"] = None
+df = pd.DataFrame(rows)
+if not df.empty:
+    df["คะแนนน่าซื้อเก็บไว้"] = df.apply(lambda r: normalize_score(r, weights), axis=1)
+    df = df.sort_values("คะแนนน่าซื้อเก็บไว้", ascending=False).reset_index(drop=True)
 
-should_fetch = (
-    refresh
-    or st.session_state["results"] is None
-    or st.session_state["last_market"] != market
-)
-
-if should_fetch:
-    progress = st.progress(0.0, text="กำลังดึงข้อมูล...")
-    rows = []
-    for i, tk in enumerate(tickers):
-        r = analyze_ticker(tk)
-        if r:
-            rows.append(r)
-        progress.progress((i + 1) / max(len(tickers), 1), text=f"ดึงข้อมูล {tk}")
-        time.sleep(0.03)
-    progress.empty()
-
-    df = pd.DataFrame(rows)
-    if not df.empty:
-        df["คะแนนน่าซื้อเก็บไว้"] = df.apply(lambda r: normalize_score(r, weights), axis=1)
-        df = df.sort_values("คะแนนน่าซื้อเก็บไว้", ascending=False).reset_index(drop=True)
-
-    st.session_state["results"] = df
-    st.session_state["fetched_at"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    st.session_state["last_market"] = market
-
-df = st.session_state["results"]
+fetched_at = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
 # ---------------------------------------------------------------------------
 # Results
@@ -485,7 +450,7 @@ df = st.session_state["results"]
 if df is None or df.empty:
     st.warning("ไม่พบข้อมูล ลองกด 🔄 ดึงข้อมูลล่าสุด อีกครั้ง")
 else:
-    st.caption(f"อัปเดตล่าสุด: {st.session_state['fetched_at']}")
+    st.caption(f"อัปเดตล่าสุด: {fetched_at} · ระบบจะรีเฟรชให้เองทุก 60 วินาที")
 
     n_hot = int((df["คะแนนน่าซื้อเก็บไว้"] >= 70).sum())
     avg_score = df["คะแนนน่าซื้อเก็บไว้"].mean()
@@ -527,7 +492,9 @@ st.markdown(
     คะแนน "ฟอร์ม" เป็นแค่ตัวช่วยกรองตามเทคนิคที่คุณเลือกเอง <b>ไม่ใช่คำแนะนำการลงทุน</b> —
     "โซนราคาอ้างอิง" คือช่วงราคาต่ำสุด 15% ของกรอบราคา 52 สัปดาห์ (คำนวณจากสถิติราคาย้อนหลังเท่านั้น
     ไม่ใช่การฟันธงว่าควรซื้อที่ราคานี้ ราคาหุ้นอาจไม่กลับมาที่โซนนี้เลยก็ได้)<br/><br/>
-    รายชื่อหุ้น SET เริ่มต้นเป็นชุดหุ้นใหญ่คุ้นเคย ไม่ใช่ SET50 ที่อัปเดตล่าสุดเป๊ะ แก้ไขได้ในตั้งค่าขั้นสูง<br/><br/>
+    รายชื่อหุ้น SET เป็นชุดหุ้นใหญ่คุ้นเคย 50 ตัว ไม่ใช่ SET50 ที่อัปเดตล่าสุดเป๊ะ<br/><br/>
+    แอปนี้อัปเดตข้อมูลให้อัตโนมัติทุก 60 วินาที — ตั้งถี่กว่านี้ไม่มีประโยชน์ เพราะ Yahoo Finance
+    เองก็อัปเดตราคาไม่เกินทุก ~15 นาทีอยู่แล้ว<br/><br/>
     กราฟในแต่ละการ์ด (กด "📈 ดูกราฟ") ดึงมาจาก <b>TradingView</b> โดยตรง เป็นกราฟสดคนละแหล่งกับคะแนนด้านบน
     (ซึ่งคำนวณจาก Yahoo Finance) ราคาจึงอาจคลาดเคลื่อนกันเล็กน้อยได้
     </div>
