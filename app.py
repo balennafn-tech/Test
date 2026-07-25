@@ -420,8 +420,13 @@ refresh = st.button("🔄 ดึงข้อมูลล่าสุด", type="
 if "results" not in st.session_state:
     st.session_state["results"] = None
     st.session_state["fetched_at"] = None
+    st.session_state["last_market"] = None
 
-should_fetch = refresh or st.session_state["results"] is None
+should_fetch = (
+    refresh
+    or st.session_state["results"] is None
+    or st.session_state["last_market"] != market
+)
 
 if should_fetch:
     progress = st.progress(0.0, text="กำลังดึงข้อมูล...")
@@ -441,6 +446,7 @@ if should_fetch:
 
     st.session_state["results"] = df
     st.session_state["fetched_at"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    st.session_state["last_market"] = market
 
 df = st.session_state["results"]
 
