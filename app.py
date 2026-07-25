@@ -17,6 +17,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 import yfinance as yf
 
 st.set_page_config(page_title="Peak Guessing", page_icon="🏁", layout="centered")
@@ -286,6 +287,44 @@ def ticker_initials(ticker: str) -> str:
     return ticker.split(".")[0][:2].upper()
 
 
+def tradingview_symbol(ticker: str) -> str:
+    """แปลงชื่อย่อหุ้นของเราเป็นรูปแบบสัญลักษณ์ที่ TradingView เข้าใจ"""
+    if ticker.upper().endswith(".BK"):
+        return f"SET:{ticker.split('.')[0].upper()}"
+    return ticker.upper()
+
+
+def tradingview_chart(ticker: str, height: int = 380) -> None:
+    """แสดงกราฟราคาสดจาก TradingView (widget ฝังจริง ไม่ใช่ภาพนิ่ง)"""
+    symbol = tradingview_symbol(ticker)
+    theme = st.session_state["theme"]
+    toolbar_bg = "#1B1D23" if theme == "dark" else "#FFFFFF"
+    container_id = f"tv_{re.sub(r'[^A-Za-z0-9]', '_', symbol)}"
+    widget_html = f"""
+    <div class="tradingview-widget-container" style="height:{height}px;">
+      <div id="{container_id}"></div>
+      <script src="https://s3.tradingview.com/tv.js"></script>
+      <script>
+      new TradingView.widget({{
+        "width": "100%",
+        "height": {height},
+        "symbol": "{symbol}",
+        "interval": "D",
+        "timezone": "Asia/Bangkok",
+        "theme": "{theme}",
+        "style": "1",
+        "locale": "th_TH",
+        "toolbar_bg": "{toolbar_bg}",
+        "enable_publishing": false,
+        "save_image": false,
+        "container_id": "{container_id}"
+      }});
+      </script>
+    </div>
+    """
+    components.html(widget_html, height=height + 16)
+
+
 def render_card(ticker: str, price: float, low: float, high: float,
                  off_high: float, rsi: float, ma50: float, score: float) -> None:
     t = tier_info(score)
@@ -323,6 +362,8 @@ def render_card(ticker: str, price: float, low: float, high: float,
         """),
         unsafe_allow_html=True,
     )
+    with st.expander(f"📈 ดูกราฟ {ticker} (TradingView)"):
+        tradingview_chart(ticker)
 
 
 # ---------------------------------------------------------------------------
@@ -371,12 +412,6 @@ if search_btn and search_ticker.strip():
             result["Ticker"], result["ราคาล่าสุด"], result["52wLow"], result["52wHigh"],
             result["%ต่ำกว่าจุดสูงสุด"], result["RSI(14)"], result["%เทียบMA50"], score,
         )
-        hist = yf.Ticker(t).history(period="1y", interval="1d", auto_adjust=True)
-        if not hist.empty:
-            chart_df = hist[["Close"]].copy()
-            chart_df["MA50"] = chart_df["Close"].rolling(50).mean()
-            chart_df["MA200"] = chart_df["Close"].rolling(200).mean()
-            st.line_chart(chart_df)
 
 st.markdown('<div class="section-label">📋 หุ้นที่เฝ้าดู</div>', unsafe_allow_html=True)
 
@@ -489,16 +524,6 @@ else:
             use_container_width=True,
         )
 
-    with st.expander("📈 ดูกราฟราคารายตัว"):
-        pick = st.selectbox("เลือกหุ้น", df["Ticker"].tolist())
-        if pick:
-            hist = yf.Ticker(pick).history(period="1y", interval="1d", auto_adjust=True)
-            if not hist.empty:
-                chart_df = hist[["Close"]].copy()
-                chart_df["MA50"] = chart_df["Close"].rolling(50).mean()
-                chart_df["MA200"] = chart_df["Close"].rolling(200).mean()
-                st.line_chart(chart_df)
-
 st.markdown(
     _html("""
     <div class="footnote-box">
@@ -509,7 +534,9 @@ st.markdown(
     คะแนน "ฟอร์ม" เป็นแค่ตัวช่วยกรองตามเทคนิคที่คุณเลือกเอง <b>ไม่ใช่คำแนะนำการลงทุน</b> —
     "โซนราคาอ้างอิง" คือช่วงราคาต่ำสุด 15% ของกรอบราคา 52 สัปดาห์ (คำนวณจากสถิติราคาย้อนหลังเท่านั้น
     ไม่ใช่การฟันธงว่าควรซื้อที่ราคานี้ ราคาหุ้นอาจไม่กลับมาที่โซนนี้เลยก็ได้)<br/><br/>
-    รายชื่อหุ้น SET เริ่มต้นเป็นชุดหุ้นใหญ่คุ้นเคย ไม่ใช่ SET50 ที่อัปเดตล่าสุดเป๊ะ แก้ไขได้ในตั้งค่าขั้นสูง
+    รายชื่อหุ้น SET เริ่มต้นเป็นชุดหุ้นใหญ่คุ้นเคย ไม่ใช่ SET50 ที่อัปเดตล่าสุดเป๊ะ แก้ไขได้ในตั้งค่าขั้นสูง<br/><br/>
+    กราฟในแต่ละการ์ด (กด "📈 ดูกราฟ") ดึงมาจาก <b>TradingView</b> โดยตรง เป็นกราฟสดคนละแหล่งกับคะแนนด้านบน
+    (ซึ่งคำนวณจาก Yahoo Finance) ราคาจึงอาจคลาดเคลื่อนกันเล็กน้อยได้
     </div>
     """),
     unsafe_allow_html=True,
