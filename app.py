@@ -1,6 +1,6 @@
 """
 PEAK GUESSING — หาหุ้นที่ราคาอยู่ในโซนน่าช้อน (US + Thai/SET)
-ธีมสปอร์ต มืด กระชับ ใช้งานง่ายทั้งมือถือและคอมพิวเตอร์
+ธีมเรียบง่าย ตัวอักษรใหญ่อ่านง่าย รองรับสลับโหมดมืด/สว่าง
 
 รันด้วย: streamlit run app.py
 
@@ -12,7 +12,6 @@ PEAK GUESSING — หาหุ้นที่ราคาอยู่ในโ�
 
 import re
 import time
-import math
 from datetime import datetime
 
 import numpy as np
@@ -32,82 +31,100 @@ def _html(s: str) -> str:
     """
     return re.sub(r"\n\s*", " ", s.strip())
 
+
 # ---------------------------------------------------------------------------
-# Sport theme styling
+# Theme (มืด/สว่าง) — สลับได้จากปุ่มในหน้าแอป
 # ---------------------------------------------------------------------------
+
+THEMES = {
+    "dark": {
+        "bg": "#121317", "surface": "#1B1D23", "border": "#2A2C33",
+        "text": "#F1F2F4", "text2": "#9BA0AA", "input_bg": "#1B1D23",
+        "tab_bg": "#1B1D23", "tab_active": "#2A2C33",
+    },
+    "light": {
+        "bg": "#F4F5F7", "surface": "#FFFFFF", "border": "#E3E5E9",
+        "text": "#16181D", "text2": "#6B7280", "input_bg": "#FFFFFF",
+        "tab_bg": "#E9EAED", "tab_active": "#FFFFFF",
+    },
+}
+
+if "theme" not in st.session_state:
+    st.session_state["theme"] = "dark"
+
+c = THEMES[st.session_state["theme"]]
 
 st.markdown(
-    """
+    _html(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-    .block-container { padding-top: 1.3rem; padding-bottom: 3rem; max-width: 640px; }
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    html, body, [class*="css"] {{ font-family: 'Inter', -apple-system, sans-serif; }}
+    .stApp {{ background: {c['bg']}; }}
+    .stApp, .stApp p, .stApp span, .stApp label, .stApp div {{ color: {c['text']}; }}
+    .block-container {{ padding-top: 1.1rem; padding-bottom: 3rem; max-width: 620px; }}
 
-    .kicker {
-        font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #C6FF3D;
-        font-weight: 600;
-    }
-    .title-big {
-        font-family: 'Oswald', sans-serif; font-size: 40px; line-height: 0.95; text-transform: uppercase;
-        font-weight: 700; margin: 8px 0 0; letter-spacing: -0.01em;
-    }
-    .accent-bar { width: 80px; height: 6px; background: #C6FF3D; margin: 12px 0 14px; transform: skewX(-18deg); }
-    .sub-text { font-size: 13px; color: #8A93A3; }
-    .section-label {
-        font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em;
-        font-size: 14px; color: #F5F6F8; margin-top: 22px; margin-bottom: 8px; font-weight: 600;
-    }
+    .title-big {{ font-size: 27px; font-weight: 800; margin: 0; }}
+    .sub-text {{ font-size: 14.5px; color: {c['text2']}; margin-top: 4px; }}
+    .section-label {{ font-size: 16px; font-weight: 700; margin-top: 22px; margin-bottom: 8px; }}
 
-    div.stButton > button {
-        background: #C6FF3D !important; color: #0A0C10 !important; border: none !important;
-        font-family: 'Oswald', sans-serif !important; font-weight: 600 !important; letter-spacing: 0.03em !important;
-        text-transform: uppercase !important; border-radius: 10px !important; height: 3em !important;
-    }
-    div[role="radiogroup"] label {
-        background: #12151C; border: 1.5px solid #1E2430; border-radius: 8px; padding: 6px 14px !important;
-        font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 12.5px; font-weight: 700;
-    }
-    div[data-testid="stExpander"] { background: #12151C; border: 1.5px solid #1E2430; border-radius: 10px; }
+    div[data-testid="stTextInput"] input {{
+        background: {c['input_bg']} !important; border: 1px solid {c['border']} !important; border-radius: 10px !important;
+        color: {c['text']} !important; font-size: 17px !important; font-family: 'Inter', sans-serif !important;
+    }}
+    div.stButton > button {{
+        border-radius: 10px !important; font-weight: 700 !important; font-size: 15.5px !important; height: 2.9em !important;
+    }}
+    div[role="radiogroup"] label {{
+        background: {c['tab_bg']}; border: 1px solid {c['border']}; border-radius: 8px; padding: 9px 14px !important;
+        font-size: 15px !important; font-weight: 600;
+    }}
+    div[data-testid="stExpander"] {{ background: {c['surface']}; border: 1px solid {c['border']}; border-radius: 10px; }}
 
-    .scoreboard {
-        display: flex; background: #12151C; border: 1.5px solid #1E2430; border-radius: 12px;
-        overflow: hidden; margin: 16px 0;
-    }
-    .sb-cell { flex: 1; text-align: center; padding: 14px 8px; }
-    .sb-cell + .sb-cell { border-left: 1.5px solid #1E2430; }
-    .sb-v { font-family: 'Oswald', sans-serif; font-size: 26px; font-weight: 600; }
-    .sb-l { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #8A93A3; margin-top: 2px; }
+    .summary {{
+        display: flex; margin: 14px 0; background: {c['surface']}; border: 1px solid {c['border']};
+        border-radius: 12px; overflow: hidden;
+    }}
+    .sm-cell {{ flex: 1; padding: 12px 8px; text-align: center; }}
+    .sm-cell + .sm-cell {{ border-left: 1px solid {c['border']}; }}
+    .sm-v {{ font-size: 24px; font-weight: 800; }}
+    .sm-l {{ font-size: 12.5px; color: {c['text2']}; margin-top: 1px; }}
 
-    .card {
-        background: #12151C; border: 1.5px solid #1E2430; border-left-width: 4px; border-radius: 10px;
-        padding: 14px; margin-bottom: 10px;
-    }
-    .card-top { display: flex; justify-content: space-between; align-items: center; }
-    .left { display: flex; align-items: center; gap: 8px; }
-    .flag {
-        font-size: 9px; font-weight: 700; letter-spacing: 0.04em; color: #5B6472;
-        border: 1px solid #262C38; border-radius: 4px; padding: 1px 5px;
-    }
-    .ticker { font-family: 'Oswald', sans-serif; font-size: 17px; font-weight: 600; }
-    .tag {
-        font-size: 10px; font-weight: 700; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 5px;
-        border: 1.5px solid; font-family: 'Oswald', sans-serif;
-    }
-    .card-mid { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-    .price { font-family: 'Oswald', sans-serif; font-size: 24px; font-weight: 500; }
-    .range { font-size: 10.5px; color: #5B6472; margin-top: 2px; }
-    .verdict-label { font-size: 11px; color: #8A93A3; margin-top: 6px; }
-    .stat-row { display: flex; gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #1E2430; }
-    .stat .v { font-size: 13px; font-weight: 600; }
-    .stat .l { font-size: 9px; color: #5B6472; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+    .card {{
+        background: {c['surface']}; border: 1px solid {c['border']}; border-radius: 12px;
+        padding: 16px; margin-bottom: 10px;
+    }}
+    .row-top {{ display: flex; justify-content: space-between; align-items: center; }}
+    .left {{ display: flex; align-items: center; gap: 10px; }}
+    .avatar {{
+        width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
+        font-size: 15px; font-weight: 800; color: #fff; flex-shrink: 0;
+    }}
+    .ticker {{ font-size: 22px; font-weight: 800; display: block; }}
+    .flag {{
+        font-size: 11.5px; font-weight: 600; color: {c['text2']}; border: 1px solid {c['border']};
+        border-radius: 4px; padding: 1px 6px; margin-top: 2px; display: inline-block;
+    }}
+    .score-pill {{ font-size: 17px; font-weight: 800; padding: 4px 12px; border-radius: 8px; }}
 
-    .footnote-box {
-        margin-top: 22px; padding: 14px; border-radius: 10px; background: #12151C;
-        border: 1px dashed #1E2430; font-size: 12px; color: #8A93A3; line-height: 1.7;
-    }
+    .row-price {{ display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; }}
+    .price {{ font-size: 26px; font-weight: 800; }}
+    .verdict {{ font-size: 15px; font-weight: 700; }}
+
+    .stat-grid {{ display: flex; margin-top: 12px; padding-top: 12px; border-top: 1px solid {c['border']}; }}
+    .stat {{ flex: 1; }}
+    .stat .v {{ font-size: 16px; font-weight: 700; }}
+    .stat .l {{ font-size: 12px; color: {c['text2']}; margin-top: 1px; }}
+    .zone {{ font-size: 13.5px; color: {c['text2']}; margin-top: 10px; }}
+    .zone b {{ color: {c['text']}; }}
+
+    .footnote-box {{
+        margin-top: 20px; padding: 14px; border-radius: 10px; background: {c['surface']};
+        border: 1px solid {c['border']}; font-size: 13px; color: {c['text2']}; line-height: 1.7;
+    }}
+    .footnote-box b {{ color: {c['text']}; }}
     </style>
-    """,
+    """),
     unsafe_allow_html=True,
 )
 
@@ -220,72 +237,68 @@ DEFAULT_WEIGHTS = {"off_high": 1.0, "rsi": 1.0, "ma50": 1.0, "ma200": 0.5}
 
 def tier_info(score: float) -> dict:
     if pd.isna(score):
-        return {"label": "ไม่มีข้อมูล", "tag": "N/A", "color": "#5B6472"}
+        return {"label": "ไม่มีข้อมูล", "color": "#8A8F98"}
     if score >= 70:
-        return {"label": "น่าช้อน", "tag": "HOT", "color": "#C6FF3D"}
+        return {"label": "น่าช้อน", "color": "#2FA84F"}
     if score >= 40:
-        return {"label": "จับตา", "tag": "WATCH", "color": "#FF6B35"}
-    return {"label": "ยังไม่เข้าเกณฑ์", "tag": "COLD", "color": "#5B6472"}
+        return {"label": "จับตา", "color": "#D98A1F"}
+    return {"label": "ยังไม่เข้าเกณฑ์", "color": "#8A8F98"}
 
 
 def market_flag(ticker: str) -> str:
     return "SET" if ticker.upper().endswith(".BK") else "US"
 
 
-def score_ring_svg(score: float, color: str, size: int = 60) -> str:
-    score_val = 0 if pd.isna(score) else max(0, min(score, 100))
-    stroke = 5
-    r = (size - stroke) / 2
-    c = 2 * math.pi * r
-    offset = c - (score_val / 100) * c
-    cx = cy = size / 2
-    label = "–" if pd.isna(score) else f"{score:.0f}"
-    return _html(f"""
-    <svg width="{size}" height="{size}" viewBox="0 0 {size} {size}">
-        <circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="#1E2430" stroke-width="{stroke}" />
-        <circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{color}" stroke-width="{stroke}"
-            stroke-dasharray="{c:.2f}" stroke-dashoffset="{offset:.2f}" stroke-linecap="round"
-            transform="rotate(-90 {cx} {cy})" />
-        <text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle"
-            style="font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;fill:#F5F6F8;">{label}</text>
-    </svg>
-    """)
+AVATAR_PALETTE = [
+    "#4C8BF5", "#F0924A", "#34B26A", "#EF6C6C", "#A57BF0",
+    "#25B7B9", "#EA6BA8", "#E0A72E", "#5AA9E6", "#8CC152",
+]
+
+
+def ticker_color(ticker: str) -> str:
+    h = 0
+    for ch in ticker:
+        h = ord(ch) + ((h << 5) - h)
+    return AVATAR_PALETTE[abs(h) % len(AVATAR_PALETTE)]
+
+
+def ticker_initials(ticker: str) -> str:
+    return ticker.split(".")[0][:2].upper()
 
 
 def render_card(ticker: str, price: float, low: float, high: float,
                  off_high: float, rsi: float, ma50: float, score: float) -> None:
     t = tier_info(score)
-    ring = score_ring_svg(score, t["color"])
     zone_low = low
     zone_high = low + 0.15 * (high - low) if high > low else low
+    score_display = "–" if pd.isna(score) else f"{score:.0f}"
     st.markdown(
         _html(f"""
-        <div class="card" style="border-left-color:{t['color']}">
-            <div class="card-top">
+        <div class="card">
+            <div class="row-top">
                 <div class="left">
-                    <span class="flag">{market_flag(ticker)}</span>
-                    <span class="ticker">{ticker}</span>
+                    <div class="avatar" style="background:{ticker_color(ticker)}">{ticker_initials(ticker)}</div>
+                    <div>
+                        <span class="ticker">{ticker}</span>
+                        <span class="flag">{market_flag(ticker)}</span>
+                    </div>
                 </div>
-                <span class="tag" style="color:{t['color']};border-color:{t['color']}">{t['tag']}</span>
+                <span class="score-pill" style="background:{t['color']}22;color:{t['color']}">{score_display}</span>
             </div>
-            <div class="card-mid">
-                <div>
-                    <div class="price">{price:.2f}</div>
-                    <div class="range">52w {low:.2f}–{high:.2f}</div>
-                    <div class="verdict-label">{t['label']}</div>
-                </div>
-                {ring}
+            <div class="row-price">
+                <span class="price">{price:.2f}</span>
+                <span class="verdict" style="color:{t['color']}">{t['label']}</span>
             </div>
-            <div class="stat-row">
+            <div class="stat-grid">
                 <div class="stat"><div class="v">{off_high:.1f}%</div><div class="l">Off-High</div></div>
                 <div class="stat"><div class="v">{rsi:.1f}</div><div class="l">RSI</div></div>
                 <div class="stat"><div class="v">{ma50:.1f}%</div><div class="l">MA50</div></div>
             </div>
-            <div class="stat-row">
+            <div class="stat-grid">
                 <div class="stat"><div class="v">{low:.2f}</div><div class="l">ต่ำสุด 52wk</div></div>
                 <div class="stat"><div class="v">{high:.2f}</div><div class="l">สูงสุด 52wk</div></div>
-                <div class="stat"><div class="v">{zone_low:.2f}–{zone_high:.2f}</div><div class="l">โซนล่าง 15%</div></div>
             </div>
+            <div class="zone">โซนราคาอ้างอิง (ล่าง 15%) <b>{zone_low:.2f} – {zone_high:.2f}</b></div>
         </div>
         """),
         unsafe_allow_html=True,
@@ -296,17 +309,22 @@ def render_card(ticker: str, price: float, low: float, high: float,
 # UI — Header
 # ---------------------------------------------------------------------------
 
-st.markdown(
-    _html("""
-    <div class="kicker">● PEAK GUESSING</div>
-    <div class="title-big">PEAK<br/>GUESSING</div>
-    <div class="accent-bar"></div>
-    <div class="sub-text">จัดฟอร์มหุ้นแบบสนามแข่ง — หาราคาที่น่าช้อนได้ในไม่กี่วินาที</div>
-    """),
-    unsafe_allow_html=True,
-)
+col_title, col_toggle = st.columns([5, 1])
+with col_title:
+    st.markdown(
+        _html("""
+        <div class="title-big">Peak Guessing</div>
+        <div class="sub-text">หาหุ้นน่าช้อน แบบเรียบง่าย ใช้งานไว</div>
+        """),
+        unsafe_allow_html=True,
+    )
+with col_toggle:
+    toggle_icon = "☀️" if st.session_state["theme"] == "dark" else "🌙"
+    if st.button(toggle_icon, key="theme_toggle", use_container_width=True):
+        st.session_state["theme"] = "light" if st.session_state["theme"] == "dark" else "dark"
+        st.rerun()
 
-st.markdown('<div class="section-label">🔍 ค้นหาฟอร์มหุ้น</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-label">🔍 ค้นหาหุ้นที่สนใจ</div>', unsafe_allow_html=True)
 col_a, col_b = st.columns([3, 1])
 with col_a:
     search_ticker = st.text_input(
@@ -319,7 +337,7 @@ with col_b:
 
 if search_btn and search_ticker.strip():
     t = search_ticker.strip().upper()
-    with st.spinner(f"กำลังตรวจสอบฟอร์ม {t}..."):
+    with st.spinner(f"กำลังตรวจสอบ {t}..."):
         result = analyze_ticker(t)
 
     if result is None:
@@ -340,7 +358,7 @@ if search_btn and search_ticker.strip():
             chart_df["MA200"] = chart_df["Close"].rolling(200).mean()
             st.line_chart(chart_df)
 
-st.markdown('<div class="section-label">📋 ลีกหุ้นที่เฝ้าดู</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-label">📋 หุ้นที่เฝ้าดู</div>', unsafe_allow_html=True)
 
 market = st.radio(
     "เลือกตลาด", ["ทั้งหมด", "US", "SET"], index=0, horizontal=True, label_visibility="collapsed"
@@ -411,10 +429,10 @@ else:
     avg_score = df["คะแนนน่าช้อน"].mean()
     st.markdown(
         _html(f"""
-        <div class="scoreboard">
-            <div class="sb-cell"><div class="sb-v">{len(df)}</div><div class="sb-l">สแกน</div></div>
-            <div class="sb-cell"><div class="sb-v" style="color:#C6FF3D">{n_hot}</div><div class="sb-l">Hot</div></div>
-            <div class="sb-cell"><div class="sb-v">{avg_score:.0f}</div><div class="sb-l">เฉลี่ย</div></div>
+        <div class="summary">
+            <div class="sm-cell"><div class="sm-v">{len(df)}</div><div class="sm-l">สแกน</div></div>
+            <div class="sm-cell"><div class="sm-v" style="color:#2FA84F">{n_hot}</div><div class="sm-l">น่าช้อน</div></div>
+            <div class="sm-cell"><div class="sm-v">{avg_score:.0f}</div><div class="sm-l">เฉลี่ย</div></div>
         </div>
         """),
         unsafe_allow_html=True,
@@ -455,7 +473,7 @@ st.markdown(
     <b>Webull ไม่มี public API อย่างเป็นทางการ</b> สำหรับนักพัฒนาภายนอก แอปนี้จึงใช้ Yahoo Finance แทน
     คุณยังส่งคำสั่งซื้อขายจริงผ่าน Webull ได้ตามปกติ<br/><br/>
     คะแนน "ฟอร์ม" เป็นแค่ตัวช่วยกรองตามเทคนิคที่คุณเลือกเอง <b>ไม่ใช่คำแนะนำการลงทุน</b> —
-    "โซนล่าง 15%" คือช่วงราคาต่ำสุด 15% ของกรอบราคา 52 สัปดาห์ (คำนวณจากสถิติราคาย้อนหลังเท่านั้น
+    "โซนราคาอ้างอิง" คือช่วงราคาต่ำสุด 15% ของกรอบราคา 52 สัปดาห์ (คำนวณจากสถิติราคาย้อนหลังเท่านั้น
     ไม่ใช่การฟันธงว่าควรซื้อที่ราคานี้ ราคาหุ้นอาจไม่กลับมาที่โซนนี้เลยก็ได้)<br/><br/>
     รายชื่อหุ้น SET เริ่มต้นเป็นชุดหุ้นใหญ่คุ้นเคย ไม่ใช่ SET50 ที่อัปเดตล่าสุดเป๊ะ แก้ไขได้ในตั้งค่าขั้นสูง
     </div>
